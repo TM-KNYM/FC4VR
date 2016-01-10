@@ -95,21 +95,15 @@ class ImageShifter():
         return pxMap
 
 
-def doFisheyeCorrection(fp, peripheral_mag, center_mag, op, resizes=None):
-    im = load_image(fp)
-    if resizes is not None:
-        im = im.resize(resizes)
+def doFisheyeCorrection(fp, peripheral_mag, center_mag, op, r, center_pos):
+    center_x, center_y = center_pos
+    im = load_image(fp).crop((center_x-r, center_y-r, r*2, r*2))
     srcImg = np.asarray(im, dtype=np.uint8)
     print(srcImg.shape)
-    shape = srcImg.shape
-    org_w, org_h, clr = shape
 
     # shift
-    r = int(org_w/2.0)
     longSide = int(r * peripheral_mag)
     shortSide = int(r * center_mag)
-    center_x = r
-    center_y = r
     px2co = createPx2CoFunc(center_x, center_y)
 
     calc = EllipseShiftCalculator(r, longSide, shortSide)
@@ -137,16 +131,22 @@ def doFisheyeCorrection(fp, peripheral_mag, center_mag, op, resizes=None):
     print(resultImg.shape)
 
     from PIL import ImageFilter
-    Image.fromarray(np.uint8(resultImg)).resize((1920,1080)).filter(ImageFilter.GaussianBlur).filter(ImageFilter.MedianFilter(size=5)).save(op, 'JPEG')
+    Image.fromarray(np.uint8(resultImg)).filter(ImageFilter.GaussianBlur).filter(ImageFilter.MedianFilter(size=5)).resize((1920, 1080)).save(op, 'JPEG')
 
 if __name__ == '__main__':
     # load img date
     # fp = 'koala.jpg'
     # args
-    fp = 'koala.jpg'
+
+    # size 1800
+    # R = 900
+
+    fp = 'koala_min.jpg'
     peripheral_mag = 0.8
     center_mag = 0.3
     op = 'result.jpg'
-    result = doFisheyeCorrection(fp, peripheral_mag, center_mag, op, resizes=(1800, 1800))
+    center_pos = (900, 900)
+    R = 900
 
+    doFisheyeCorrection(fp, peripheral_mag, center_mag, op, R, center_pos)
     print('comp')
