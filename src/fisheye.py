@@ -95,7 +95,7 @@ class ImageShifter():
         return pxMap
 
 
-def doFisheyeCorrection(fp, peripheral_mag, center_mag, op, r, center_pos):
+def doFisheyeCorrection4Img(fp, peripheral_mag, center_mag, op, r, center_pos):
     center_x, center_y = center_pos
     im = load_image(fp).crop((center_x-r, center_y-r, r*2, r*2))
     srcImg = np.asarray(im, dtype=np.uint8)
@@ -141,12 +141,12 @@ if __name__ == '__main__':
     # size 1800
     # R = 900
 
-    fp = 'koala_min.jpg'
+    fp = 'image/koala_min.jpg'
     peripheral_mag = 0.8
     center_mag = 0.3
     op = 'result.jpg'
     center_pos = (900, 900)
     R = 900
 
-    doFisheyeCorrection(fp, peripheral_mag, center_mag, op, R, center_pos)
+    doFisheyeCorrection4Img(fp, peripheral_mag, center_mag, op, R, center_pos)
     print('comp')
