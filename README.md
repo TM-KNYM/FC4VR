@@ -17,6 +17,7 @@
 - scipy
 - PIL
 - opencv(3.1.0)
+- ffmpeg
 
 ## Usage
 
