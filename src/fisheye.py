@@ -2,6 +2,7 @@
 from PIL import Image
 import numpy as np
 import math
+import cv2
 
 
 def load_image(fp):
@@ -95,6 +96,32 @@ class ImageShifter():
         return pxMap
 
 
+def createPxShiftMap(srcImg, peripheral_mag, center_mag, r, center_pos):
+    center_x, center_y = center_pos
+    longSide = int(r * peripheral_mag)
+    shortSide = int(r * center_mag)
+    calc = EllipseShiftCalculator(r, longSide, shortSide)
+
+    # create dst image
+    side = longSide*2
+    co2px = createCo2PxFunc(side, side)
+    px2co = createPx2CoFunc(center_x, center_y)
+
+    shfiter = ImageShifter(calc, px2co, co2px)
+    return shfiter.createMap(srcImg)
+
+def arrangePosition(srcImg, dstImg, pxMap):
+    for px in pxMap:
+        dx, dy = px['dst']
+        sx, sy = px['src']
+        dstImg[dx][dy] = srcImg[sx][sy]
+
+def expandImg(img):
+    w, h, tmp = img.shape
+    left_img = create_blank_image(int(w/2), h)
+    right_img = create_blank_image(int(w/2), h)
+    return np.hstack((np.hstack((left_img, img)), right_img))
+
 def doFisheyeCorrection4Img(fp, peripheral_mag, center_mag, op, r, center_pos):
     center_x, center_y = center_pos
     im = load_image(fp).crop((center_x-r, center_y-r, r*2, r*2))
@@ -104,24 +131,23 @@ def doFisheyeCorrection4Img(fp, peripheral_mag, center_mag, op, r, center_pos):
     # shift
     longSide = int(r * peripheral_mag)
     shortSide = int(r * center_mag)
-    px2co = createPx2CoFunc(center_x, center_y)
-
     calc = EllipseShiftCalculator(r, longSide, shortSide)
 
     # create dst image
     side = longSide*2
-    resultImg = create_blank_image(side, side)
     co2px = createCo2PxFunc(side, side)
+    px2co = createPx2CoFunc(center_x, center_y)
 
-    exe = ImageShifter(calc, px2co, co2px)
-    pxMap = exe.createMap(srcImg)  # out put img
+    shfiter = ImageShifter(calc, px2co, co2px)
+    pxMap = shfiter.createMap(srcImg)
 
+    resultImg = create_blank_image(side, side)
     for px in pxMap:
         dx, dy = px['dst']
         sx, sy = px['src']
         resultImg[dx][dy] = srcImg[sx][sy]
-    w, h, tmp = resultImg.shape
 
+    h, w, tmp = resultImg.shape
     # expand 360 from 180
     left_img = create_blank_image(int(w/2), h)
     right_img = create_blank_image(int(w/2), h)
@@ -133,6 +159,43 @@ def doFisheyeCorrection4Img(fp, peripheral_mag, center_mag, op, r, center_pos):
     from PIL import ImageFilter
     Image.fromarray(np.uint8(resultImg)).filter(ImageFilter.GaussianBlur).filter(ImageFilter.MedianFilter(size=5)).resize((1920, 1080)).save(op, 'JPEG')
 
+
+def doFisheyeCorrection4Video(fp, peripheral_mag, center_mag, op, r, center_pos):
+    vd = cv2.VideoCapture('video/sample.3gp')
+    k4 = (3840, 2160) # 3840x2160
+    en, fr = vd.read()
+    x, y = center_pos
+    top = y - r
+    bot = y + r
+    left = x - r
+    right = x + r
+    pxMap = None
+    outV = None
+    fourcc = cv2.VideoWriter_fourcc(*'XVID')
+    while en is True:
+        crop_fr = fr[top:bot, left:right]
+
+        if pxMap is None:
+            pxMap = createPxShiftMap(crop_fr, peripheral_mag, center_mag, r, (r, r)) 
+            side = r * peripheral_mag * 2
+        outImg = create_blank_image(side, side)
+        arrangePosition(crop_fr, outImg, pxMap)
+        outImg = cv2.medianBlur(outImg, 5)
+        outImg = expandImg(outImg)
+        outImg = cv2.resize(outImg, k4)
+        print(outImg.shape)
+        if outV is None:
+            oh, ow, tmp = outImg.shape
+            outV = cv2.VideoWriter(op, fourcc, 25.0, k4)
+        outV.write(outImg)
+        en, fr = vd.read()
+    outV.release()
+
+def captureFirstFrame(fp, out):
+    vd = cv2.VideoCapture('video/sample.3gp')
+    en, fr = vd.read()
+    Image.fromarray(np.uint8(fr)).save(out, 'JPEG')
+
 if __name__ == '__main__':
     # load img date
     # fp = 'koala.jpg'
@@ -140,7 +203,8 @@ if __name__ == '__main__':
 
     # size 1800
     # R = 900
-
+    '''
+    # for Image
     fp = 'image/koala_min.jpg'
     peripheral_mag = 0.8
     center_mag = 0.3
@@ -150,3 +214,15 @@ if __name__ == '__main__':
 
     doFisheyeCorrection4Img(fp, peripheral_mag, center_mag, op, R, center_pos)
     print('comp')
+    '''
+
+    # first capture
+    captureFirstFrame(fp='video/sample.3gp', out='1.jpg')
+    
+    center_pos = (531, 1110)
+    r = 510
+    fp = 'video/sample.3gp'
+    out = 'result.avi'
+    peripheral_mag = 1.2
+    center_mag = 0.6
+    doFisheyeCorrection4Video(fp, peripheral_mag, center_mag, op=out, r=r, center_pos=center_pos)
