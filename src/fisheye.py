@@ -29,6 +29,8 @@ class EllipseShiftCalculator():
         y = self._y  # y pos
         r = self._r
 
+        if (r*r) <= (y*y):
+            return False
         if (r*r) <= (x*x)+(y*y):
             return False
         if math.sqrt(x*x + y*y) <= 0:
@@ -45,9 +47,22 @@ class EllipseShiftCalculator():
         M = math.sqrt(r*r - (x*x + y*y))/math.sqrt(x*x + y*y)
         sx = math.sqrt((a*a*b*b)/(b*b+a*a*M*M))
         sy = sx*M
-        sx = x * sx / math.sqrt((x*x) + (y*y))
-        sy = y * sy / math.sqrt((r*r) - ((x*x) + (y*y)))
-        return (int(round(sx)), int(round(sy)))
+        ex = x * sx / math.sqrt((x*x) + (y*y))
+        ey = y * sy / math.sqrt((r*r) - ((x*x) + (y*y)))
+
+        ax = math.sqrt((math.pow(a,2)*math.pow(ex,2)) / (math.pow(a,2)-math.pow(ey,2)))
+        cx = math.fabs(ex)
+        ay = math.sqrt(math.pow(ax-cx, 2)+math.pow(ey,2))
+        if ey > 1500:
+            print(x)
+            print(y)
+            print('---')
+
+        if ex < 0:
+            ax = ax*-1
+        if ey < 0:
+            ay = ay*-1
+        return (int(round(ax)), int(round(ey)))
 
 
 def createCo2PxFunc(width, height):
@@ -106,9 +121,9 @@ def createPxShiftMap(srcImg, peripheral_mag, center_mag, r, center_pos):
     side = longSide*2
     co2px = createCo2PxFunc(side, side)
     px2co = createPx2CoFunc(center_x, center_y)
-
     shfiter = ImageShifter(calc, px2co, co2px)
     return shfiter.createMap(srcImg)
+
 
 def arrangePosition(srcImg, dstImg, pxMap):
     for px in pxMap:
@@ -116,11 +131,13 @@ def arrangePosition(srcImg, dstImg, pxMap):
         sx, sy = px['src']
         dstImg[dx][dy] = srcImg[sx][sy]
 
+
 def expandImg(img):
     w, h, tmp = img.shape
     left_img = create_blank_image(int(w/2), h)
     right_img = create_blank_image(int(w/2), h)
     return np.hstack((np.hstack((left_img, img)), right_img))
+
 
 def doFisheyeCorrection4Img(fp, peripheral_mag, center_mag, op, r, center_pos):
     center_x, center_y = center_pos
@@ -134,7 +151,8 @@ def doFisheyeCorrection4Img(fp, peripheral_mag, center_mag, op, r, center_pos):
     calc = EllipseShiftCalculator(r, longSide, shortSide)
 
     # create dst image
-    side = longSide*2
+    side = math.sqrt(2)*longSide*2
+    print(side)
     co2px = createCo2PxFunc(side, side)
     px2co = createPx2CoFunc(center_x, center_y)
 
@@ -174,10 +192,9 @@ def doFisheyeCorrection4Video(fp, peripheral_mag, center_mag, op, r, center_pos)
     fourcc = cv2.VideoWriter_fourcc(*'XVID')
     while en is True:
         crop_fr = fr[top:bot, left:right]
-
         if pxMap is None:
-            pxMap = createPxShiftMap(crop_fr, peripheral_mag, center_mag, r, (r, r)) 
-            side = r * peripheral_mag * 2
+            pxMap = createPxShiftMap(crop_fr, peripheral_mag, center_mag, r, (r, r))
+            side = r * peripheral_mag * 2 * math.sqrt(2)
         outImg = create_blank_image(side, side)
         arrangePosition(crop_fr, outImg, pxMap)
         outImg = cv2.medianBlur(outImg, 5)
@@ -203,11 +220,11 @@ if __name__ == '__main__':
 
     # size 1800
     # R = 900
-    '''
     # for Image
+    '''
     fp = 'image/koala_min.jpg'
-    peripheral_mag = 0.8
-    center_mag = 0.3
+    peripheral_mag = 0.9
+    center_mag = 0.5
     op = 'result.jpg'
     center_pos = (900, 900)
     R = 900
