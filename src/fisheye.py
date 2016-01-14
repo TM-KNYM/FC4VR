@@ -50,13 +50,9 @@ class EllipseShiftCalculator():
         ex = x * sx / math.sqrt((x*x) + (y*y))
         ey = y * sy / math.sqrt((r*r) - ((x*x) + (y*y)))
 
-        ax = math.sqrt((math.pow(a,2)*math.pow(ex,2)) / (math.pow(a,2)-math.pow(ey,2)))
+        ax = math.sqrt((math.pow(a, 2)*math.pow(ex, 2)) / (math.pow(a, 2)-math.pow(ey, 2)))
         cx = math.fabs(ex)
-        ay = math.sqrt(math.pow(ax-cx, 2)+math.pow(ey,2))
-        if ey > 1500:
-            print(x)
-            print(y)
-            print('---')
+        ay = math.sqrt(math.pow(ax-cx, 2)+math.pow(ey, 2))
 
         if ex < 0:
             ax = ax*-1
@@ -117,23 +113,22 @@ def createPxShiftMap(srcImg, peripheral_mag, center_mag, r, center_pos):
     shortSide = int(r * center_mag)
     calc = EllipseShiftCalculator(r, longSide, shortSide)
 
-    # create dst image
-    side = longSide*2
+    side = int(math.ceil(longSide*2))
     co2px = createCo2PxFunc(side, side)
     px2co = createPx2CoFunc(center_x, center_y)
     shfiter = ImageShifter(calc, px2co, co2px)
-    return shfiter.createMap(srcImg)
+    return shfiter.createMap(srcImg), side
 
 
 def arrangePosition(srcImg, dstImg, pxMap):
     for px in pxMap:
         dx, dy = px['dst']
         sx, sy = px['src']
-        dstImg[dx][dy] = srcImg[sx][sy]
+        dstImg[dy][dx] = srcImg[sy][sx]
 
 
 def expandImg(img):
-    w, h, tmp = img.shape
+    h, w, tmp = img.shape
     left_img = create_blank_image(int(w/2), h)
     right_img = create_blank_image(int(w/2), h)
     return np.hstack((np.hstack((left_img, img)), right_img))
@@ -145,42 +140,18 @@ def doFisheyeCorrection4Img(fp, peripheral_mag, center_mag, op, r, center_pos):
     srcImg = np.asarray(im, dtype=np.uint8)
     print(srcImg.shape)
 
-    # shift
-    longSide = int(r * peripheral_mag)
-    shortSide = int(r * center_mag)
-    calc = EllipseShiftCalculator(r, longSide, shortSide)
-
-    # create dst image
-    side = math.sqrt(2)*longSide*2
-    print(side)
-    co2px = createCo2PxFunc(side, side)
-    px2co = createPx2CoFunc(center_x, center_y)
-
-    shfiter = ImageShifter(calc, px2co, co2px)
-    pxMap = shfiter.createMap(srcImg)
-
+    pxMap, side = createPxShiftMap(srcImg, peripheral_mag, center_mag, r, center_pos)
     resultImg = create_blank_image(side, side)
-    for px in pxMap:
-        dx, dy = px['dst']
-        sx, sy = px['src']
-        resultImg[dx][dy] = srcImg[sx][sy]
-
-    h, w, tmp = resultImg.shape
-    # expand 360 from 180
-    left_img = create_blank_image(int(w/2), h)
-    right_img = create_blank_image(int(w/2), h)
-    print(left_img.shape)
-    print(right_img.shape)
-    resultImg = np.hstack((np.hstack((left_img, resultImg)), right_img))
-    print(resultImg.shape)
+    arrangePosition(srcImg, resultImg, pxMap)
+    resultImg = expandImg(resultImg)
 
     from PIL import ImageFilter
     Image.fromarray(np.uint8(resultImg)).filter(ImageFilter.GaussianBlur).filter(ImageFilter.MedianFilter(size=5)).resize((1920, 1080)).save(op, 'JPEG')
 
 
 def doFisheyeCorrection4Video(fp, peripheral_mag, center_mag, op, r, center_pos):
-    vd = cv2.VideoCapture('video/sample.3gp')
-    k4 = (3840, 2160) # 3840x2160
+    vd = cv2.VideoCapture(fp)
+    k4 = (3840, 2160)  # 3840x2160
     en, fr = vd.read()
     x, y = center_pos
     top = y - r
@@ -193,8 +164,7 @@ def doFisheyeCorrection4Video(fp, peripheral_mag, center_mag, op, r, center_pos)
     while en is True:
         crop_fr = fr[top:bot, left:right]
         if pxMap is None:
-            pxMap = createPxShiftMap(crop_fr, peripheral_mag, center_mag, r, (r, r))
-            side = r * peripheral_mag * 2 * math.sqrt(2)
+            pxMap, side = createPxShiftMap(crop_fr, peripheral_mag, center_mag, r, (r, r))
         outImg = create_blank_image(side, side)
         arrangePosition(crop_fr, outImg, pxMap)
         outImg = cv2.medianBlur(outImg, 5)
@@ -235,7 +205,6 @@ if __name__ == '__main__':
 
     # first capture
     captureFirstFrame(fp='video/sample.3gp', out='1.jpg')
-    
     center_pos = (531, 1110)
     r = 510
     fp = 'video/sample.3gp'
