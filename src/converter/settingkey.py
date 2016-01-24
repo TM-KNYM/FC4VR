@@ -1,0 +1,10 @@
+KEY_OF_FPS = 'fps'
+KEY_OF_OUT = 'out_put'
+KEY_OF_IN = 'in_put'
+KEY_OF_CODEC = 'codec'
+KEY_OF_SIZE = 'size'
+
+KEY_OF_R = 'r'
+KEY_OF_CENTER_POS = 'centerPos'
+KEY_OF_P_MAG = 'pMag'
+KEY_OF_C_MAG = 'cMag'
