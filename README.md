@@ -1,6 +1,6 @@
-# FC4VR
+# MEZASHI
 
-魚眼の平面展開及び補正
+カジュアルにVRコンテンツを撮ろう
 
 ## Description
 
@@ -8,14 +8,12 @@
 手軽にVRコンテンツに変換出来るツールを目指します。
 
 ***DEMO:***
-
+https://www.youtube.com/watch?v=dS5-pSq-pIM
 
 ## Requirement
 
 - Python3.4.2
 - numpy
-- scipy
-- PIL
 - opencv(3.1.0)
 - ffmpeg
 
