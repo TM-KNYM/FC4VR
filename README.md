@@ -7,9 +7,9 @@
 魚眼レンズを付けたスマホで撮影した画像又は動画を
 手軽にVRコンテンツに変換してみる実験
 
-***DEMO:*** 
-変換後 https://www.youtube.com/watch?v=dS5-pSq-pIM 
-変換前 https://youtu.be/t0BNjqZLTWw 
+***DEMO:***  
+変換後 https://www.youtube.com/watch?v=dS5-pSq-pIM  
+変換前 https://youtu.be/t0BNjqZLTWw  
 
 ## Requirement
 
