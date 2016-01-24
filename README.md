@@ -8,8 +8,8 @@
 手軽にVRコンテンツに変換してみる実験
 
 ***DEMO:*** 
-変換後 https://www.youtube.com/watch?v=dS5-pSq-pIM
-変換前 https://youtu.be/t0BNjqZLTWw
+変換後 https://www.youtube.com/watch?v=dS5-pSq-pIM 
+変換前 https://youtu.be/t0BNjqZLTWw 
 
 ## Requirement
 
