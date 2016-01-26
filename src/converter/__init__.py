@@ -1,6 +1,5 @@
-import converter.domain
+import converter.service
 import converter.settingkey
 
-domain = converter.domain.DomainModel()
+service = converter.service.ConvertService()
 settingkey = converter.settingkey
-
