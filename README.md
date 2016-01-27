@@ -21,10 +21,13 @@
 ## Usage
 sample実行方法  
 動画変換
+
 '''
 python3 convert2vr.py
 '''
+
 動画の先頭フレームだけを変換
+
 '''
 python3 preview_img.py
 '''
