@@ -251,29 +251,32 @@ class Processor(Settings):
     def __process(self, srcImg, table):
         height, width, t = table.shape
         dstImg = self.__create_blank_image(width, height)
-        for y, row in enumerate(table):
+
+        def lineProc(y, row):
             counter = 0
             preData = None
             for x, info in enumerate(row):
                 en, sy, sx = info
                 if en == 1:
                     data = srcImg[sy][sx]
-                    dstImg[y][x] = data
+                    dstLine = dstImg[y]
+                    dstLine[x] = data
                     if preData is not None:
-                        if counter != 0 and counter != 1:
-                            for i in range(1, int(counter/2)):
-                                dstImg[y][x-i] = data
-                            for i in range(int(counter/2), counter):
-                                dstImg[y][x-i] = preData
+                        if counter > 1:
+                            dstLine[x-int(counter/2):x] = data
+                            dstLine[x-counter: x-int(counter/2)] = preData
                         elif counter == 1:
-                                dstImg[y][x-1] = preData
+                                dstLine[x-1] = preData
                     elif counter > 0:
-                        for i in range(1, counter):
-                            dstImg[y][x-i] = data
+                        dstLine[x-counter:x] = data
                     counter = 1
                     preData = data
                 else:
                     counter = counter+1
+
+        for y, row in enumerate(table):
+            lineProc(y, row)
+
         return dstImg
 
     def __create_blank_image(self, w, h):
@@ -333,4 +336,3 @@ class ProjectiveTransferCmdFactory():
 
     def createCmd(self, x, y):
         return TransferCommand(self._r, self._ls, self._ss, (x, y))
-
