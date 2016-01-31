@@ -23,7 +23,6 @@ if __name__ == '__main__':
     core.setSettingsParam(KEY_OF_C_MAG, center_mag)
     core.setSettingsParam(KEY_OF_P_MAG, peripheral_mag)
     core.buildTable()
-
     core.setSettingsParam(KEY_OF_IN, fp)
     core.setSettingsParam(KEY_OF_OUT, 'out.avi')
     im = core.doCreatePreviewImage()

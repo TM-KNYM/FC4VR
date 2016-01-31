@@ -17,11 +17,18 @@ SIZE_OF_4K = (3840, 2160)
 
 
 class ConvertService():
-
+    '''
+    上位層に対して公開するメソッドを提供します
+    上位層からは基本的にこのクラスを通して指示すること
+    '''
     def __init__(self):
         self.__converter = Converter()
 
     def buildTable(self):
+        '''
+            VR表示用に展開するテーブルを生成します
+            設定パラメータが足りない場合や間違っている場合は例外が投げられます
+        '''
         self.__converter.buildTable()
 
     def setSettingsParam(self, key, val):
@@ -35,14 +42,27 @@ class ConvertService():
 
 
 class Settings(object):
-
+    '''
+        変換に必要な設定を保持するための抽象クラス
+    '''
     def __init__(self):
         self._settings = self.getSettings()
 
     def getSettings(self):
+        '''
+            抽象メソッド継承するクラスは必ず実装する必要あり
+            基本的に以下のような辞書型で定義すること
+            {
+                'key' : value,
+                'key2': value
+            }
+        '''
         raise NameError('not impl')
 
     def hasKey(self, key):
+        '''
+            指定したKeyが存在するか
+        '''
         return key in self._settings
 
     def setParam(self, key, val):
@@ -73,7 +93,7 @@ class Converter():
     def createPreviewImage(self):
         table = self.__tableRepo.getTable()
         im = self.__settings['imgrepo'].getFirstFrameImage()
-        self.__settings['proc'].createPreviewImage(im, table)
+        return self.__settings['proc'].createPreviewImage(im, table)
 
     def createVRVideo(self):
         vd = self.__settings['imgrepo'].getFrames()
@@ -100,6 +120,7 @@ class ImageRepository(Settings):
 
 
 class TableRepository():
+
     def __init__(self):
         self.__table = None
 
@@ -114,6 +135,7 @@ class TableRepository():
 
 
 class ConversionTableBuilder(Settings):
+
     def __init__(self):
         Settings.__init__(self)
 
@@ -174,7 +196,32 @@ class ConversionTableBuilder(Settings):
                     dst_x, dst_y = cmd.execute()
                     dst_x, dst_y = co2px(dst_x, dst_y)
                     table[dst_y][dst_x] = (1, y, x)
-        return table
+
+        result_table = np.zeros((side, side, 2), np.int)
+
+        def lineProc(y, row):
+            counter = 0
+            preData = None
+            dstLine = result_table[y]
+            for x, info in enumerate(row):
+                en, sy, sx = info
+                if en == 1:
+                    data = (sy, sx)
+                    if preData is not None:
+                        if counter > 1:
+                            dstLine[x-int(counter/2):x] = data
+                            dstLine[x-counter: x-int(counter/2)] = preData
+                        elif counter == 1:
+                                dstLine[x-1] = preData
+                    elif counter > 0:
+                        dstLine[x-counter:x] = data
+                    counter = 1
+                    preData = data
+                else:
+                    counter = counter+1
+        for y, row in enumerate(table):
+            lineProc(y, row)
+        return result_table
 
     def createCo2PxFunc(self, center_x, center_y):
 
@@ -230,15 +277,13 @@ class Processor(Settings):
     def createVRVideo(self, vd, table):
         en, fr = vd.read()
         outV = self.__getWriter()
-        # while en is True:
         import time
-        for i in range(5):
+        while en is True:  # for i in range(5):
             ss = time.time()
-            outImg = self.__process(fr, table)
-            print(time.time()-ss)
-            outImg = self.__convertVRImgSize(outImg)
+            outImg = self.__convertVRImgSize(self.__process(fr, table))
             outV.write(outImg)
             en, fr = vd.read()
+            print(time.time()-ss)
         if outV is not None:
             outV.release()
 
@@ -249,34 +294,8 @@ class Processor(Settings):
                                self._settings[KEY_OF_SIZE])
 
     def __process(self, srcImg, table):
-        height, width, t = table.shape
-        dstImg = self.__create_blank_image(width, height)
-
-        def lineProc(y, row):
-            counter = 0
-            preData = None
-            for x, info in enumerate(row):
-                en, sy, sx = info
-                if en == 1:
-                    data = srcImg[sy][sx]
-                    dstLine = dstImg[y]
-                    dstLine[x] = data
-                    if preData is not None:
-                        if counter > 1:
-                            dstLine[x-int(counter/2):x] = data
-                            dstLine[x-counter: x-int(counter/2)] = preData
-                        elif counter == 1:
-                                dstLine[x-1] = preData
-                    elif counter > 0:
-                        dstLine[x-counter:x] = data
-                    counter = 1
-                    preData = data
-                else:
-                    counter = counter+1
-
-        for y, row in enumerate(table):
-            lineProc(y, row)
-
+        ary = [[srcImg[sy][sx] for sy, sx in line] for line in table]
+        dstImg = np.array(ary, dtype=np.uint8)
         return dstImg
 
     def __create_blank_image(self, w, h):
@@ -284,6 +303,7 @@ class Processor(Settings):
 
 
 class TransferCommand():
+
     def __init__(self, r, longSide, shortSide, pos):
         self._r = r
         self._a = longSide
@@ -315,7 +335,6 @@ class TransferCommand():
         sy = sx*M
         ex = x * sx / math.sqrt((x*x) + (y*y))
         ey = y * sy / math.sqrt((r*r) - ((x*x) + (y*y)))
-
         ax = math.sqrt((math.pow(a, 2)*math.pow(ex, 2)) / (math.pow(a, 2)-math.pow(ey, 2)))
         cx = math.fabs(ex)
         ay = math.sqrt(math.pow(ax-cx, 2)+math.pow(ey, 2))
