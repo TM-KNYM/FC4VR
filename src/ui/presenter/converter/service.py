@@ -2,16 +2,16 @@
 import numpy as np
 import math
 import cv2
-from converter.settingkey import KEY_OF_C_MAG
-from converter.settingkey import KEY_OF_P_MAG
-from converter.settingkey import KEY_OF_R
-from converter.settingkey import KEY_OF_CENTER_POS
+from presenter.converter.settingkey import KEY_OF_C_MAG
+from presenter.converter.settingkey import KEY_OF_P_MAG
+from presenter.converter.settingkey import KEY_OF_R
+from presenter.converter.settingkey import KEY_OF_CENTER_POS
 
-from converter.settingkey import KEY_OF_CODEC
-from converter.settingkey import KEY_OF_IN
-from converter.settingkey import KEY_OF_OUT
-from converter.settingkey import KEY_OF_SIZE
-from converter.settingkey import KEY_OF_FPS
+from presenter.converter.settingkey import KEY_OF_CODEC
+from presenter.converter.settingkey import KEY_OF_IN
+from presenter.converter.settingkey import KEY_OF_OUT
+from presenter.converter.settingkey import KEY_OF_SIZE
+from presenter.converter.settingkey import KEY_OF_FPS
 
 SIZE_OF_4K = (3840, 2160)
 
@@ -68,6 +68,7 @@ class Settings(object):
     def setParam(self, key, val):
         if not self.hasKey(key):
             raise NameError('not exist')
+        print(key + "::" + str(val))
         self._settings[key] = val
 
 
@@ -91,8 +92,10 @@ class Converter():
         self.__tableRepo.setTable(table)
 
     def createPreviewImage(self):
-        table = self.__tableRepo.getTable()
         im = self.__settings['imgrepo'].getFirstFrameImage()
+        table = self.__tableRepo.getTable()
+        if table is None:
+            return im
         return self.__settings['proc'].createPreviewImage(im, table)
 
     def createVRVideo(self):
